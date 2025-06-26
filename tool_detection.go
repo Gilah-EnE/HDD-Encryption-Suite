@@ -1,0 +1,83 @@
+package main
+
+import (
+	"encoding/hex"
+	"fmt"
+	"github.com/BurntSushi/rure-go"
+	"github.com/Gilah-EnE/dec24-go/test_suite"
+	"log"
+	"math"
+	"os"
+)
+
+type SignatureData struct {
+	regex  string
+	sector int64
+}
+
+type AdvancedSignatureMap struct {
+	regex  *rure.Regex
+	sector int64
+}
+
+func toolDetection(fileName string, blockSize int) map[string]int {
+	signatures := make(map[string]AdvancedSignatureMap)
+
+	patterns := map[string]SignatureData{
+		"FreeBSD GEOM ELI":  {"(?i)(47454f4d3a3a454c49)", -1},
+		"Windows BitLocker": {"(?i)(eb58902d4656452d46532d0002080000)", 0},
+		"Linux LUKS":        {"(?i)4c554b53babe", 0},
+	}
+
+	foundSignaturesTotal := make(map[string]int)
+	for name, pattern := range patterns {
+		regex, err := rure.Compile(pattern.regex)
+		if err != nil {
+			log.Fatalf("failed to compile pattern for %s: %v", name, err)
+		}
+		signatures[name] = AdvancedSignatureMap{regex: regex, sector: pattern.sector}
+		foundSignaturesTotal[name] = 0
+	}
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(file *os.File) {
+		fileCloseErr := file.Close()
+		if fileCloseErr != nil {
+			log.Fatal(fileCloseErr)
+		}
+	}(file)
+
+	buffer := make([]byte, blockSize)
+
+	for sigType := range signatures {
+		if entry, ok := signatures[sigType]; ok {
+			skip := entry.sector
+
+			var seekErr error
+			if skip < 0 {
+				_, seekErr = file.Seek(int64(blockSize*int(math.Abs(float64(skip))-2)), 2)
+			} else {
+				_, seekErr = file.Seek(int64(blockSize-1)*skip, 0)
+			}
+			if seekErr != nil {
+				log.Fatalln("Seek error: ", seekErr)
+			}
+			bytesRead, fileReadErr := file.Read(buffer)
+			if bytesRead == 0 || fileReadErr != nil {
+				break
+			}
+			hexData := hex.EncodeToString(buffer[:bytesRead])
+			foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+			_, returnSeekErr := file.Seek(0, 0)
+			if returnSeekErr != nil {
+				log.Fatalln("Return seek error: ", returnSeekErr)
+			}
+		}
+
+	}
+	fmt.Print("\r")
+	return foundSignaturesTotal
+}
