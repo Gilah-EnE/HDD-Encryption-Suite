@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/mappu/miqt/qt"
+	qt "github.com/mappu/miqt/qt"
 	"log"
 	"os"
 )
@@ -17,13 +17,13 @@ func main() {
 	filePickerLayout := qt.NewQHBoxLayout2()
 	fileNameField := qt.NewQLineEdit(widget)
 	filePickerButton := qt.NewQPushButton(widget)
-	filePickerButton.SetText("Выбор файла")
+	filePickerButton.SetText("Select file")
 	filePickerButton.OnClicked(func() {
 		wDir, wDirErr := os.Getwd()
 		if wDirErr != nil {
 			log.Fatal(wDirErr)
 		}
-		filePickerDialog := qt.NewQFileDialog6(widget, "Выберите файл для анализа", wDir, "Все файлы (*)")
+		filePickerDialog := qt.NewQFileDialog6(widget, "Seleft image file", wDir, "ALl files (*)")
 
 		if filePickerDialog.Exec() == int(qt.QDialog__Accepted) {
 			selectedFile := filePickerDialog.SelectedFiles()
@@ -38,13 +38,13 @@ func main() {
 
 	// Results display
 	resultsLayout := qt.NewQGridLayout2()
-	resultsLabel := qt.NewQLabel5("Утилита шифрования", widget)
+	resultsLabel := qt.NewQLabel5("Encryption suite", widget)
 	resultsField := qt.NewQLineEdit(widget)
 	resultsLayout.AddWidget2(resultsLabel.QWidget, 0, 0)
 	resultsLayout.AddWidget2(resultsField.QWidget, 0, 1)
 
 	// Start button
-	startButton := qt.NewQPushButton5("Запуск", widget)
+	startButton := qt.NewQPushButton5("Run", widget)
 	startButton.OnClicked(func() {
 		toolDetectionResult := toolDetection(fileNameField.Text(), 512)
 		for suite, value := range toolDetectionResult {

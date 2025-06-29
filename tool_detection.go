@@ -24,9 +24,10 @@ func toolDetection(fileName string, blockSize int) map[string]int {
 	signatures := make(map[string]AdvancedSignatureMap)
 
 	patterns := map[string]SignatureData{
-		"FreeBSD GEOM ELI":  {"(?i)(47454f4d3a3a454c49)", -1},
-		"Windows BitLocker": {"(?i)(eb58902d4656452d46532d0002080000)", 0},
-		"Linux LUKS":        {"(?i)4c554b53babe", 0},
+		"FreeBSD GEOM ELI":                    {"(?i)(47454f4d3a3a454c49)", -1},
+		"Windows BitLocker":                   {"(?i)(eb58902d4656452d46532d0002080000)", 1},
+		"Linux LUKS":                          {"(?i)4c554b53babe", 1},
+		"Apple Encrypted APFS (FileVault v2)": {"(?i)41505342.{456}0800000000000000", 0},
 	}
 
 	foundSignaturesTotal := make(map[string]int)
@@ -57,26 +58,53 @@ func toolDetection(fileName string, blockSize int) map[string]int {
 			skip := entry.sector
 
 			var seekErr error
-			if skip < 0 {
-				_, seekErr = file.Seek(int64(blockSize*int(math.Abs(float64(skip))-2)), 2)
-			} else {
-				_, seekErr = file.Seek(int64(blockSize-1)*skip, 0)
-			}
-			if seekErr != nil {
-				log.Fatalln("Seek error: ", seekErr)
-			}
-			bytesRead, fileReadErr := file.Read(buffer)
-			if bytesRead == 0 || fileReadErr != nil {
-				break
-			}
-			hexData := hex.EncodeToString(buffer[:bytesRead])
-			foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
-			_, returnSeekErr := file.Seek(0, 0)
-			if returnSeekErr != nil {
-				log.Fatalln("Return seek error: ", returnSeekErr)
+			if skip == 0 {
+				buffer := make([]byte, blockSize)
+				n := 0
+				for {
+					bytesRead, err := file.Read(buffer)
+					if bytesRead == 0 || err != nil {
+						break
+					}
+
+					n += bytesRead
+					fmt.Printf("%.1f ", float32(n)/1048576)
+
+					// Convert bytes to hex string
+					hexData := hex.EncodeToString(buffer[:bytesRead])
+					idx := 0
+					for sigType := range signatures {
+						idx = idx + 1
+						if idx%100 == 0 {
+							fmt.Printf("%d, ", idx)
+						}
+
+						foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+					}
+					fmt.Print("\r")
+				}
+			} else if skip != 0 {
+				if skip < 0 {
+					_, seekErr = file.Seek(int64(blockSize*int(math.Abs(float64(skip))-2)), 2)
+				} else if skip > 0 {
+					skip = skip - 1
+					_, seekErr = file.Seek(int64(blockSize-1)*skip, 0)
+				}
+				if seekErr != nil {
+					log.Fatalln("Seek error: ", seekErr)
+				}
+				bytesRead, fileReadErr := file.Read(buffer)
+				if bytesRead == 0 || fileReadErr != nil {
+					break
+				}
+				hexData := hex.EncodeToString(buffer[:bytesRead])
+				foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+				_, returnSeekErr := file.Seek(0, 0)
+				if returnSeekErr != nil {
+					log.Fatalln("Return seek error: ", returnSeekErr)
+				}
 			}
 		}
-
 	}
 	fmt.Print("\r")
 	return foundSignaturesTotal
