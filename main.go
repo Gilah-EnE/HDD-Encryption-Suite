@@ -23,7 +23,7 @@ func main() {
 		if wDirErr != nil {
 			log.Fatal(wDirErr)
 		}
-		filePickerDialog := qt.NewQFileDialog6(widget, "Seleft image file", wDir, "ALl files (*)")
+		filePickerDialog := qt.NewQFileDialog6(widget, "Select image file", wDir, "ALl files (*)")
 
 		if filePickerDialog.Exec() == int(qt.QDialog__Accepted) {
 			selectedFile := filePickerDialog.SelectedFiles()
@@ -40,13 +40,18 @@ func main() {
 	resultsLayout := qt.NewQGridLayout2()
 	resultsLabel := qt.NewQLabel5("Encryption suite", widget)
 	resultsField := qt.NewQLineEdit(widget)
+	resultsField.SetReadOnly(true)
 	resultsLayout.AddWidget2(resultsLabel.QWidget, 0, 0)
 	resultsLayout.AddWidget2(resultsField.QWidget, 0, 1)
+
+	// Hail Mary mode
+	hailMarySwitch := qt.NewQCheckBox4("Hail Mary mode (all patterns checked in all sectors - slow, horrible and painful)", widget)
 
 	// Start button
 	startButton := qt.NewQPushButton5("Run", widget)
 	startButton.OnClicked(func() {
-		toolDetectionResult := toolDetection(fileNameField.Text(), 512)
+		resultsField.SetText("")
+		toolDetectionResult := toolDetection(fileNameField.Text(), 512, hailMarySwitch.IsChecked())
 		for suite, value := range toolDetectionResult {
 			if value > 0 {
 				resultsField.SetText(suite)
@@ -58,6 +63,7 @@ func main() {
 	globalLayout := qt.NewQVBoxLayout(widget)
 	globalLayout.AddLayout(filePickerLayout.QLayout)
 	globalLayout.AddLayout(resultsLayout.QLayout)
+	globalLayout.AddWidget(hailMarySwitch.QWidget)
 	globalLayout.AddWidget(startButton.QWidget)
 
 	window.SetCentralWidget(widget)

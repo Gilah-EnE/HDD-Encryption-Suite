@@ -20,7 +20,7 @@ type AdvancedSignatureMap struct {
 	sector int64
 }
 
-func toolDetection(fileName string, blockSize int) map[string]int {
+func toolDetection(fileName string, blockSize int, hailMaryMode bool) map[string]int {
 	signatures := make(map[string]AdvancedSignatureMap)
 
 	patterns := map[string]SignatureData{
@@ -53,59 +53,77 @@ func toolDetection(fileName string, blockSize int) map[string]int {
 
 	buffer := make([]byte, blockSize)
 
-	for sigType := range signatures {
-		if entry, ok := signatures[sigType]; ok {
-			skip := entry.sector
+	if hailMaryMode {
+		buffer := make([]byte, blockSize)
+		n := 0
+		for {
+			bytesRead, err := file.Read(buffer)
+			if bytesRead == 0 || err != nil {
+				break
+			}
 
-			var seekErr error
-			if skip == 0 {
-				buffer := make([]byte, blockSize)
-				n := 0
-				for {
-					bytesRead, err := file.Read(buffer)
-					if bytesRead == 0 || err != nil {
-						break
-					}
+			n += bytesRead
+			fmt.Printf("%.1f ", float32(n)/1048576)
 
-					n += bytesRead
-					fmt.Printf("%.1f ", float32(n)/1048576)
+			// Convert bytes to hex string
+			hexData := hex.EncodeToString(buffer[:bytesRead])
+			for sigType := range signatures {
+				if entry, ok := signatures[sigType]; ok {
+					foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+				}
+			}
+			fmt.Print("\r")
+		}
+	} else {
 
-					// Convert bytes to hex string
-					hexData := hex.EncodeToString(buffer[:bytesRead])
-					idx := 0
-					for sigType := range signatures {
-						idx = idx + 1
-						if idx%100 == 0 {
-							fmt.Printf("%d, ", idx)
+		for sigType := range signatures {
+			if entry, ok := signatures[sigType]; ok {
+				skip := entry.sector
+
+				var seekErr error
+
+				if skip == 0 {
+					buffer := make([]byte, blockSize)
+					n := 0
+					for {
+						bytesRead, err := file.Read(buffer)
+						if bytesRead == 0 || err != nil {
+							break
 						}
 
+						n += bytesRead
+						fmt.Printf("%.1f ", float32(n)/1048576)
+
+						// Convert bytes to hex string
+						hexData := hex.EncodeToString(buffer[:bytesRead])
 						foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+						fmt.Print("\r")
 					}
-					fmt.Print("\r")
-				}
-			} else if skip != 0 {
-				if skip < 0 {
-					_, seekErr = file.Seek(int64(blockSize*int(math.Abs(float64(skip))-2)), 2)
-				} else if skip > 0 {
-					skip = skip - 1
-					_, seekErr = file.Seek(int64(blockSize-1)*skip, 0)
-				}
-				if seekErr != nil {
-					log.Fatalln("Seek error: ", seekErr)
-				}
-				bytesRead, fileReadErr := file.Read(buffer)
-				if bytesRead == 0 || fileReadErr != nil {
-					break
-				}
-				hexData := hex.EncodeToString(buffer[:bytesRead])
-				foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
-				_, returnSeekErr := file.Seek(0, 0)
-				if returnSeekErr != nil {
-					log.Fatalln("Return seek error: ", returnSeekErr)
+				} else if skip != 0 {
+					if skip < 0 {
+						_, seekErr = file.Seek(int64(blockSize*int(math.Abs(float64(skip))-2)), 2)
+					} else if skip > 0 {
+						skip = skip - 1
+						_, seekErr = file.Seek(int64(blockSize-1)*skip, 0)
+					}
+					if seekErr != nil {
+						log.Fatalln("Seek error: ", seekErr)
+					}
+					bytesRead, fileReadErr := file.Read(buffer)
+					if bytesRead == 0 || fileReadErr != nil {
+						break
+					}
+					hexData := hex.EncodeToString(buffer[:bytesRead])
+					foundSignaturesTotal[sigType] += test_suite.FindBytesPattern(hexData, entry.regex)
+					_, returnSeekErr := file.Seek(0, 0)
+					if returnSeekErr != nil {
+						log.Fatalln("Return seek error: ", returnSeekErr)
+					}
 				}
 			}
 		}
 	}
 	fmt.Print("\r")
+	fmt.Println(foundSignaturesTotal)
 	return foundSignaturesTotal
 }
