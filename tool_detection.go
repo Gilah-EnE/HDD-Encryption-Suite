@@ -20,14 +20,25 @@ type AdvancedSignatureMap struct {
 	sector int64
 }
 
+func foundSignaturesTotalToReadable(foundSignaturesTotal map[string]int) string {
+	var readable string
+	for key, value := range foundSignaturesTotal {
+		if true {
+			readable = readable + fmt.Sprintf("%s - %d, ", key, value)
+		}
+	}
+	return readable
+}
+
 func toolDetection(fileName string, blockSize int, hailMaryMode bool) map[string]int {
 	signatures := make(map[string]AdvancedSignatureMap)
 
 	patterns := map[string]SignatureData{
-		"FreeBSD GEOM ELI":                    {"(?i)(47454f4d3a3a454c49)", -1},
-		"Windows BitLocker":                   {"(?i)(eb58902d4656452d46532d0002080000)", 1},
-		"Linux LUKS":                          {"(?i)4c554b53babe", 1},
-		"Apple Encrypted APFS (FileVault v2)": {"(?i)41505342.{456}0800000000000000", 0},
+		"FreeBSD GELI": {"(?i)(47454f4d3a3a454c49)", -1},
+		"BitLocker":    {"(?i)(eb58902d4656452d46532d0002080000)", 1},
+		"LUKSv1":       {"(?i)4c554b53babe0001", 1},
+		"LUKSv2":       {"(?i)4c554b53babe0002", 1},
+		"FileVault v2": {"(?i)41505342.{456}0800000000000000", 0},
 	}
 
 	foundSignaturesTotal := make(map[string]int)
@@ -124,6 +135,6 @@ func toolDetection(fileName string, blockSize int, hailMaryMode bool) map[string
 		}
 	}
 	fmt.Print("\r")
-	fmt.Println(foundSignaturesTotal)
+	fmt.Println(foundSignaturesTotalToReadable(foundSignaturesTotal))
 	return foundSignaturesTotal
 }

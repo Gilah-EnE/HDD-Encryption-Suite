@@ -9,7 +9,8 @@ import (
 func main() {
 	qt.NewQApplication(os.Args)
 	window := qt.NewQMainWindow(nil)
-	window.SetMinimumSize(qt.NewQSize2(600, 192))
+	// window.SetMinimumSize(qt.NewQSize2(600, 192))
+	window.SetWindowTitle("HDD Encryption Suite")
 	window.Show()
 	widget := qt.NewQWidget2()
 
@@ -19,7 +20,7 @@ func main() {
 	filePickerButton := qt.NewQPushButton(widget)
 	filePickerButton.SetText("Select file")
 	filePickerButton.OnClicked(func() {
-		wDir, wDirErr := os.Getwd()
+		wDir, wDirErr := os.UserHomeDir()
 		if wDirErr != nil {
 			log.Fatal(wDirErr)
 		}
@@ -55,7 +56,7 @@ func main() {
 	sectorSizeSwitchLayout.AddWidget(advancedFormatSectorSizeRadio.QWidget)
 
 	// Hail Mary mode
-	hailMarySwitch := qt.NewQCheckBox4("Hail Mary mode (all patterns checked in all sectors - slow, horrible and painful)", widget)
+	hailMarySwitch := qt.NewQCheckBox4("Hail Mary mode (all patterns checked in all sectors - slow, horrible and painful death)", widget)
 
 	// Start button
 	startButton := qt.NewQPushButton5("Run", widget)
@@ -70,11 +71,7 @@ func main() {
 		}
 		resultsField.SetText("")
 		toolDetectionResult := toolDetection(fileNameField.Text(), sectorSize, hailMarySwitch.IsChecked())
-		for suite, value := range toolDetectionResult {
-			if value > 0 {
-				resultsField.SetText(suite)
-			}
-		}
+		resultsField.SetText(foundSignaturesTotalToReadable(toolDetectionResult))
 	})
 
 	// Global layout
