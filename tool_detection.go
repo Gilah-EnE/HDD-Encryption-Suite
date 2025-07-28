@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/BurntSushi/rure-go"
-	"github.com/Gilah-EnE/dec24-go/test_suite"
 	"log"
 	"math"
 	"os"
+
+	"github.com/BurntSushi/rure-go"
+	"github.com/Gilah-EnE/dec24-go/test_suite"
 )
 
 type SignatureData struct {
@@ -23,9 +24,7 @@ type AdvancedSignatureMap struct {
 func foundSignaturesTotalToReadable(foundSignaturesTotal map[string]int) string {
 	var readable string
 	for key, value := range foundSignaturesTotal {
-		if true {
-			readable = readable + fmt.Sprintf("%s - %d, ", key, value)
-		}
+		readable = readable + fmt.Sprintf("%s - %d, ", key, value)
 	}
 	return readable
 }
